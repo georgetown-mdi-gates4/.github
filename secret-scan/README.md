@@ -2,6 +2,8 @@
 
 Scans every file in a repo folder for secrets with
 [gitleaks](https://github.com/gitleaks/gitleaks) 8.30.1 (MIT license).
+`gitleaks.toml` is a copy of the gitleaks default config, so its MIT
+license is kept beside it in `LICENSE-gitleaks`.
 The workflow `.github/workflows/data-check.yml` runs it on the target
 repo after the data check, also when the data check fails.
 
