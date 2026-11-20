@@ -75,7 +75,7 @@
       "label": "a symlink counts at its target's size",
       "find": "size = os.lstat(path).st_size",
       "replace": "size = os.stat(path).st_size",
-      "source": "#9 (PR); no PR or ticket names this rule, test_symlink_counts_at_own_size covers it"
+      "source": "review of the #16 housekeeping branch; rule built in PR #9, test_symlink_counts_at_own_size covers it"
     },
     {
       "script": "../backfill/backfill.py",
@@ -89,14 +89,14 @@
       "label": "a README lookalike such as README-old.md counts as a README",
       "find": "n == stem or n.startswith(stem + \".\")",
       "replace": "n.startswith(stem)",
-      "source": "#12 (PR); no PR or ticket names this rule, test_readme_lookalike_does_not_count covers it"
+      "source": "review of the #16 housekeeping branch; rule built in PR #12, test_readme_lookalike_does_not_count covers it"
     },
     {
       "script": "../backfill/backfill.py",
       "label": ".gitignore matched in any case",
       "find": "if path not in names and",
       "replace": "if path.lower() not in lower and",
-      "source": "#12 (PR); no PR or ticket names this rule, test_gitignore_name_is_exact_case covers it"
+      "source": "review of the #16 housekeeping branch; rule built in PR #12, test_gitignore_name_is_exact_case covers it"
     }
   ],
   "retired": []

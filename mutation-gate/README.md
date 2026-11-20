@@ -32,11 +32,11 @@ full run takes a few minutes.
 
 ## Add a mutation
 
-Add an entry to `mutation-gate/mutations.json` only when a ticket names
-the rule as one that must be provable by mutation, or a review found a
-change that every test let through. `source` cites that ticket or PR.
-When no ticket or PR names the rule, `source` cites the PR that built the
-check and the test that covers the rule.
+An entry in `mutation-gate/mutations.json` needs one of two things: a
+ticket that names the rule as one that must be provable by mutation, or
+a review that found a breakage every test let through. `source` cites
+that ticket or review. It can also name the PR that built the rule and
+the test that covers it.
 
     {"script": "../data-check/check.py",
      "label": "a file exactly at the size limit is rejected",
