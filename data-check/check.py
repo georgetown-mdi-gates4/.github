@@ -2,6 +2,7 @@
 
 Walks the whole tree (skips the folders in rules.json "skip_folders"),
 prints one line per rejected file as "<relative path>: <reason>", sorted.
+A folder or file it cannot read is rejected too ("<path>: cannot read (...)").
 Exit 0 when clean, 1 when anything is rejected, 2 on bad usage.
 The rules live in rules.json beside this script.
 
@@ -20,7 +21,7 @@ def reasons(rel, size, rules):
     if size > rules["max_bytes"]:
         out.append(f"over {rules['max_bytes']} bytes")
     in_allowed = rel.startswith(rules["allowed_folder"].rstrip("/") + "/")
-    in_data = any(p in rules["data_folders"] for p in parts[:-1])
+    in_data = any(p.lower() in rules["data_folders"] for p in parts[:-1])
     ext = os.path.splitext(parts[-1])[1].lower()
     if ext in rules["data_extensions"] and in_data and not in_allowed:
         out.append(f"data file type under a {' or '.join(rules['data_folders'])} folder")
@@ -29,14 +30,25 @@ def reasons(rel, size, rules):
 
 def check(root, rules):
     rejected = []
-    for dirpath, dirnames, filenames in os.walk(root):
+
+    def rel(path):
+        return os.path.relpath(path, root).replace(os.sep, "/")
+
+    def unreadable(err):
+        rejected.append(f"{rel(err.filename)}: cannot read ({err.strerror})")
+
+    for dirpath, dirnames, filenames in os.walk(root, onerror=unreadable):
         dirnames[:] = [d for d in dirnames if d not in rules["skip_folders"]]
         for name in filenames:
             path = os.path.join(dirpath, name)
-            rel = os.path.relpath(path, root).replace(os.sep, "/")
-            why = reasons(rel, os.lstat(path).st_size, rules)
+            try:
+                size = os.lstat(path).st_size
+            except OSError as err:
+                unreadable(err)
+                continue
+            why = reasons(rel(path), size, rules)
             if why:
-                rejected.append(f"{rel}: {'; '.join(why)}")
+                rejected.append(f"{rel(path)}: {'; '.join(why)}")
     return sorted(rejected)
 
 

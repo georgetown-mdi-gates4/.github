@@ -23,7 +23,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          repository: georgetown-mdi-gates4/.github
+          repository: ${{ github.repository_owner }}/.github
           path: .org-check
           persist-credentials: false
       - run: python3 .org-check/data-check/check.py target
