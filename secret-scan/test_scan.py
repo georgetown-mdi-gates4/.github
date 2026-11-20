@@ -26,7 +26,7 @@ REPO = os.path.dirname(HERE)
 WORKFLOW = os.path.join(REPO, ".github", "workflows", "data-check.yml")
 PIN_FILE = os.path.join(HERE, "gitleaks-release.env")
 CONFIG = os.path.join(HERE, "gitleaks.toml")
-DOCS = os.path.join(REPO, "README.md")
+DOCS = os.path.join(HERE, "README.md")
 
 
 def release_pin():
