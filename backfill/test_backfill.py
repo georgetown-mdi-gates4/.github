@@ -282,7 +282,8 @@ class BackfillTest(unittest.TestCase):
         with open(os.path.join(self.dir, ".gitignore"), "w") as f:
             f.write(template(".gitignore"))
         cases = {"data/x.csv": True, "index/v.npy": True, ".env": True,
-                 "tests/fixtures/data/small.csv": False, "src/pkg/data/loader.py": False}
+                 "tests/fixtures/data/small.csv": False, "src/pkg/data/loader.py": False,
+                 "src/pkg/index/__init__.py": False}
         for path, ignored in cases.items():
             p = subprocess.run(["git", "-C", self.dir, "check-ignore", "-q", "--no-index", path])
             self.assertEqual(p.returncode == 0, ignored, path)
