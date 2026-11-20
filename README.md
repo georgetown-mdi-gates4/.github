@@ -8,7 +8,8 @@ files under any data or index folder. The size limit, the file types and
 the folder names live in `data-check/rules.json`, so read them there.
 Case does not matter for the data and index folder names or the file
 types, e.g. `Data/x.CSV` is rejected. Files under `tests/fixtures/` at the
-repo root (exact case) pass the type rule, never the size rule. A
+repo root (exact case) are exempt from the type rule only. The size rule
+still applies. A
 `tests/fixtures/` folder deeper in the tree gets no exception. A folder or
 file the check cannot read fails the check.
 

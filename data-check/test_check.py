@@ -120,8 +120,12 @@ class CheckTest(unittest.TestCase):
             f"tests/fixtures2/data/x.csv: {TYPE_REASON}",
         ], 1)
 
+    def test_fixtures_exception_is_exact_case(self):
+        make(self.root, "Tests/Fixtures/data/x.csv")
+        self.assertRun([f"Tests/Fixtures/data/x.csv: {TYPE_REASON}"], 1)
+
     def test_limit_is_the_org_standard(self):
-        # The org standard (CONTRIBUTING.md) promises 1 MB = 1,048,576 bytes.
+        # The org standard (ticket #7) promises 1 MB = 1,048,576 bytes.
         # A change to rules.json alone must not quietly change that promise.
         self.assertEqual(LIMIT, 1048576)
 
@@ -171,7 +175,7 @@ class CheckTest(unittest.TestCase):
         self.lock(os.path.join(self.root, "locked"), 0o444)  # list, no stat
         self.assertRun(["locked/a.txt: cannot read (Permission denied)"], 1)
 
-    def bad_rules(self, text):
+    def with_rules(self, text):
         bin_dir = os.path.join(self.root, "bin")
         os.makedirs(bin_dir)
         script = shutil.copy(SCRIPT, bin_dir)
@@ -179,13 +183,20 @@ class CheckTest(unittest.TestCase):
             with open(os.path.join(bin_dir, "rules.json"), "w") as f:
                 f.write(text)
         make(self.root, "data/x.csv")
-        return run(self.root, script)[1]
+        return run(self.root, script)[:2]
 
     def test_missing_rules_fails(self):
-        self.assertNotEqual(self.bad_rules(None), 0)
+        self.assertEqual(self.with_rules(None)[1], 1)
 
     def test_invalid_rules_fails(self):
-        self.assertNotEqual(self.bad_rules("{not json"), 0)
+        self.assertEqual(self.with_rules("{not json")[1], 1)
+
+    def test_rules_lists_case_does_not_matter(self):
+        with open(os.path.join(HERE, "rules.json")) as f:
+            rules = json.load(f)
+        rules["data_folders"] = [d.title() for d in rules["data_folders"]]
+        rules["data_extensions"] = [e.upper() for e in rules["data_extensions"]]
+        self.assertEqual(self.with_rules(json.dumps(rules)), ([f"data/x.csv: {TYPE_REASON}"], 1))
 
 
 if __name__ == "__main__":

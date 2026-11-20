@@ -58,6 +58,8 @@ def main(argv):
         return 2
     with open(RULES) as f:
         rules = json.load(f)
+    for key in ("data_folders", "data_extensions"):
+        rules[key] = [v.lower() for v in rules[key]]
     lines = check(argv[1], rules)
     for line in lines:
         print(line)
