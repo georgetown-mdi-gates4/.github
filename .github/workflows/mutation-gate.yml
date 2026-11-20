@@ -6,6 +6,7 @@ name: mutation-gate
 
 on:
   pull_request:
+  merge_group:
 
 permissions:
   contents: read
@@ -19,5 +20,9 @@ jobs:
           persist-credentials: false
       - name: Install gitleaks
         run: sh secret-scan/install.sh "$RUNNER_TEMP/gitleaks" >> "$GITHUB_PATH"
+      - name: Self-checks of the runner and of gate.py
+        run: |
+          python3 mutation-gate/mutation_gate.py --demo
+          python3 mutation-gate/gate.py --self-test
       - name: Mutation gate
         run: python3 mutation-gate/gate.py

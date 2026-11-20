@@ -61,42 +61,42 @@
       "label": "a file exactly at the size limit is rejected",
       "find": "if size > rules[\"max_bytes\"]:",
       "replace": "if size >= rules[\"max_bytes\"]:",
-      "source": "#16"
+      "source": "#2 (ticket: break the size limit and a test fails), built in PR #9"
     },
     {
       "script": "../data-check/check.py",
       "label": "fixtures exemption applies at any depth",
       "find": "in_allowed = rel.startswith(rules[\"allowed_folder\"].rstrip(\"/\") + \"/\")",
       "replace": "in_allowed = rules[\"allowed_folder\"] in rel",
-      "source": "#16"
+      "source": "#9 (PR: tests/fixtures/ is exempt at the repo root only)"
     },
     {
       "script": "../data-check/check.py",
       "label": "a symlink counts at its target's size",
       "find": "size = os.lstat(path).st_size",
       "replace": "size = os.stat(path).st_size",
-      "source": "#16"
+      "source": "#9 (PR); no PR or ticket names this rule, test_symlink_counts_at_own_size covers it"
     },
     {
       "script": "../backfill/backfill.py",
       "label": "a failed root listing counts as every file present",
       "find": "    gaps = missing([e[\"name\"] for e in gh(\"api\", f\"{name}/contents\") if e[\"type\"] != \"dir\"], config)\n",
       "replace": "    try:\n        gaps = missing([e[\"name\"] for e in gh(\"api\", f\"{name}/contents\") if e[\"type\"] != \"dir\"], config)\n    except GhError:\n        gaps = []\n",
-      "source": "#16"
+      "source": "#12 (PR: any gh failure prints an error and exits 1)"
     },
     {
       "script": "../backfill/backfill.py",
       "label": "a README lookalike such as README-old.md counts as a README",
       "find": "n == stem or n.startswith(stem + \".\")",
       "replace": "n.startswith(stem)",
-      "source": "#16"
+      "source": "#12 (PR); no PR or ticket names this rule, test_readme_lookalike_does_not_count covers it"
     },
     {
       "script": "../backfill/backfill.py",
       "label": ".gitignore matched in any case",
       "find": "if path not in names and",
       "replace": "if path.lower() not in lower and",
-      "source": "#16"
+      "source": "#12 (PR); no PR or ticket names this rule, test_gitignore_name_is_exact_case covers it"
     }
   ],
   "retired": []
