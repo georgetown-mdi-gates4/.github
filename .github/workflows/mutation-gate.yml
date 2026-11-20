@@ -1,0 +1,23 @@
+# Mutation gate for this repo only: applies each mutation recorded in
+# mutation-gate/mutations.json and fails when one passes every test.
+# Kept apart from data-check.yml, which the org ruleset runs in every
+# target repo. See mutation-gate/README.md.
+name: mutation-gate
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  mutation-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install gitleaks
+        run: sh secret-scan/install.sh "$RUNNER_TEMP/gitleaks" >> "$GITHUB_PATH"
+      - name: Mutation gate
+        run: python3 mutation-gate/gate.py

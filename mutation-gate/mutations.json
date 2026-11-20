@@ -1,0 +1,103 @@
+{
+  "mutations": [
+    {
+      "script": "../secret-scan/install.sh",
+      "label": "sha256 check skipped",
+      "find": "(cd \"$tmp\" && echo \"$GITLEAKS_SHA256  $tarball\" | sha256sum -c - >&2)",
+      "replace": "true",
+      "source": "#17 (review of the secret scan, ticket #3)"
+    },
+    {
+      "script": "../secret-scan/scan.sh",
+      "label": "--config dropped, so the gitleaks default and the target's own .gitleaks.toml apply",
+      "find": "--config \"$here/gitleaks.toml\" ",
+      "replace": "",
+      "source": "#17 (review of the secret scan, ticket #3)"
+    },
+    {
+      "script": "../secret-scan/scan.sh",
+      "label": "archive depth 1, so a zip inside a zip is not read",
+      "find": "max_archive_depth=8",
+      "replace": "max_archive_depth=1",
+      "source": "#17 (review of the secret scan, ticket #3)"
+    },
+    {
+      "script": "../secret-scan/gitleaks.toml",
+      "label": "global allowlist skips .env files",
+      "find": "    '''(?:^|/)\\.git$''',\n",
+      "replace": "    '''(?:^|/)\\.git$''',\n    '''(?:^|/)\\.env$''',\n",
+      "source": "#17 (review of the secret scan, ticket #3)"
+    },
+    {
+      "script": "../secret-scan/gitleaks-release.env",
+      "label": "GITLEAKS_VERSION bumped alone",
+      "find": "GITLEAKS_VERSION=8.30.1",
+      "replace": "GITLEAKS_VERSION=8.30.2",
+      "source": "#17 (review of the secret scan, ticket #3)"
+    },
+    {
+      "script": "../secret-scan/README.md",
+      "label": "download URL version bumped alone",
+      "find": "releases/download/v8.30.1/",
+      "replace": "releases/download/v8.30.2/",
+      "source": "#17 (review of the secret scan, ticket #3)"
+    },
+    {
+      "script": "../.github/workflows/data-check.yml",
+      "label": "secret-scan steps moved before the data check",
+      "find": "      - run: python3 .org-check/data-check/check.py target\n      # The two steps below run even when the data check fails, so both\n      # results show. The job fails if either check fails.\n      - name: Install gitleaks\n        if: ${{ !cancelled() }}\n        run: sh .org-check/secret-scan/install.sh \"$RUNNER_TEMP/gitleaks\" >> \"$GITHUB_PATH\"\n      - name: Secret scan\n        if: ${{ !cancelled() }}\n        run: sh .org-check/secret-scan/scan.sh target\n",
+      "replace": "      - name: Install gitleaks\n        if: ${{ !cancelled() }}\n        run: sh .org-check/secret-scan/install.sh \"$RUNNER_TEMP/gitleaks\" >> \"$GITHUB_PATH\"\n      - name: Secret scan\n        if: ${{ !cancelled() }}\n        run: sh .org-check/secret-scan/scan.sh target\n      - run: python3 .org-check/data-check/check.py target\n",
+      "source": "#17 (review of the secret scan, ticket #3)"
+    },
+    {
+      "script": "../.github/workflows/data-check.yml",
+      "label": "Secret scan step gets continue-on-error: true",
+      "find": "      - name: Secret scan\n",
+      "replace": "      - name: Secret scan\n        continue-on-error: true\n",
+      "source": "#17 (review of the secret scan, ticket #3)"
+    },
+    {
+      "script": "../data-check/check.py",
+      "label": "a file exactly at the size limit is rejected",
+      "find": "if size > rules[\"max_bytes\"]:",
+      "replace": "if size >= rules[\"max_bytes\"]:",
+      "source": "#16"
+    },
+    {
+      "script": "../data-check/check.py",
+      "label": "fixtures exemption applies at any depth",
+      "find": "in_allowed = rel.startswith(rules[\"allowed_folder\"].rstrip(\"/\") + \"/\")",
+      "replace": "in_allowed = rules[\"allowed_folder\"] in rel",
+      "source": "#16"
+    },
+    {
+      "script": "../data-check/check.py",
+      "label": "a symlink counts at its target's size",
+      "find": "size = os.lstat(path).st_size",
+      "replace": "size = os.stat(path).st_size",
+      "source": "#16"
+    },
+    {
+      "script": "../backfill/backfill.py",
+      "label": "a failed root listing counts as every file present",
+      "find": "    gaps = missing([e[\"name\"] for e in gh(\"api\", f\"{name}/contents\") if e[\"type\"] != \"dir\"], config)\n",
+      "replace": "    try:\n        gaps = missing([e[\"name\"] for e in gh(\"api\", f\"{name}/contents\") if e[\"type\"] != \"dir\"], config)\n    except GhError:\n        gaps = []\n",
+      "source": "#16"
+    },
+    {
+      "script": "../backfill/backfill.py",
+      "label": "a README lookalike such as README-old.md counts as a README",
+      "find": "n == stem or n.startswith(stem + \".\")",
+      "replace": "n.startswith(stem)",
+      "source": "#16"
+    },
+    {
+      "script": "../backfill/backfill.py",
+      "label": ".gitignore matched in any case",
+      "find": "if path not in names and",
+      "replace": "if path.lower() not in lower and",
+      "source": "#16"
+    }
+  ],
+  "retired": []
+}
