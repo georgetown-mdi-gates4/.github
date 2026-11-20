@@ -17,6 +17,9 @@
 #    matches its own rule (this repo is scanned too).
 #
 # To upgrade: copy the new upstream file and make the same two changes.
+# Any edit to this file must also update GITLEAKS_CONFIG_SHA256 in
+# gitleaks-release.env to the new sha256 of this file
+# (sha256sum secret-scan/gitleaks.toml), or the tests fail.
 # To fix a false positive, add an allowlist here (org owners only).
 
 title = "gitleaks config"

@@ -12,7 +12,7 @@ import tarfile
 import tempfile
 import unittest
 
-from test_scan import REPO, workflow_run_command
+from test_scan import REPO, release_pin, workflow_run_command
 
 FAKE_CURL = """#!/bin/sh
 # Copies $FAKE_TARBALL to the -o path and logs the URL.
@@ -84,9 +84,8 @@ class InstallTest(unittest.TestCase):
         self.assertFalse(os.path.exists(self.github_path) and os.path.getsize(self.github_path))
 
     def test_pin_file_is_a_real_sha256(self):
-        with open(os.path.join(REPO, "secret-scan", "gitleaks-release.env")) as f:
-            pin = dict(l.strip().split("=", 1) for l in f if l.strip() and not l.startswith("#"))
-        self.assertEqual(set(pin), {"GITLEAKS_VERSION", "GITLEAKS_SHA256"})
+        pin = release_pin()
+        self.assertEqual(set(pin), {"GITLEAKS_VERSION", "GITLEAKS_SHA256", "GITLEAKS_CONFIG_SHA256"})
         self.assertRegex(pin["GITLEAKS_SHA256"], r"^[0-9a-f]{64}$")
 
 

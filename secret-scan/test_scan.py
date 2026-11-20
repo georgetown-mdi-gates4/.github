@@ -7,12 +7,15 @@ a string that looks like a real secret (the check scans this repo too).
 Run: python3 -m unittest discover -s secret-scan -v
 Set REQUIRE_GITLEAKS=1 to fail, not skip, when gitleaks is not on PATH.
 """
+import hashlib
+import io
 import os
 import re
 import secrets
 import shutil
 import string
 import subprocess
+import tarfile
 import tempfile
 import unittest
 import zipfile
@@ -21,6 +24,15 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SCRIPT = os.path.join(HERE, "scan.sh")
 REPO = os.path.dirname(HERE)
 WORKFLOW = os.path.join(REPO, ".github", "workflows", "data-check.yml")
+PIN_FILE = os.path.join(HERE, "gitleaks-release.env")
+CONFIG = os.path.join(HERE, "gitleaks.toml")
+DOCS = os.path.join(REPO, "README.md")
+
+
+def release_pin():
+    """gitleaks-release.env as a dict of its KEY=value lines."""
+    with open(PIN_FILE) as f:
+        return dict(l.strip().split("=", 1) for l in f if l.strip() and not l.startswith("#"))
 
 
 def fake_github_token():
@@ -67,6 +79,10 @@ def workflow_run_command(name):
     return workflow_step(name)[-1].split("run: ", 1)[1]
 
 
+def token_file_bytes():
+    return f'TOKEN = "{fake_github_token()}"\n'.encode()
+
+
 def run(path, cwd=None):
     p = subprocess.run(["sh", SCRIPT, path], capture_output=True, text=True, cwd=cwd)
     return p.returncode, p.stdout + p.stderr
@@ -96,6 +112,32 @@ class WorkflowPinTest(unittest.TestCase):
             "        if: ${{ !cancelled() }}",
             "        run: sh .org-check/secret-scan/scan.sh target",
         ])
+
+    # The scan runs after the data check, as the ticket asks.
+    def test_data_check_runs_before_the_secret_scan(self):
+        firsts = [s[0] for s in workflow_job()[1]]
+        order = [firsts.index("      - run: python3 .org-check/data-check/check.py target"),
+                 firsts.index("      - name: Install gitleaks"),
+                 firsts.index("      - name: Secret scan")]
+        self.assertEqual(order, sorted(order))
+
+
+# Any edit to gitleaks.toml, or a version bump in one place only, fails
+# here, so a weaker config cannot pass review unnoticed.
+class PinTest(unittest.TestCase):
+    def test_config_matches_its_sha256_pin(self):
+        with open(CONFIG, "rb") as f:
+            self.assertEqual(hashlib.sha256(f.read()).hexdigest(),
+                             release_pin()["GITLEAKS_CONFIG_SHA256"])
+
+    def test_version_is_the_same_everywhere(self):
+        version = release_pin()["GITLEAKS_VERSION"]
+        with open(CONFIG) as f:
+            self.assertEqual(re.findall(r"/blob/v([0-9.]+)/config/", f.read()), [version])
+        with open(DOCS) as f:
+            named = re.findall(r"\b\d+\.\d+\.\d+\b", f.read())
+        self.assertTrue(named, "the docs name no gitleaks version")
+        self.assertEqual(set(named), {version})
 
 
 @unittest.skipUnless(shutil.which("gitleaks") or os.environ.get("REQUIRE_GITLEAKS") == "1",
@@ -148,16 +190,21 @@ class ScanTest(unittest.TestCase):
             write(cwd, ".gitleaksignore", fingerprint + "\n")
             self.assertEqual(run(self.root, cwd=cwd)[0], 1)
 
-    # The default gitleaks config skips these paths. The org config does not.
+    # The default gitleaks config skips the first four paths. The org
+    # config skips none of them, and no common secrets file either.
     def test_no_path_is_skipped(self):
-        for name in ["sub/gitleaks.toml", "node_modules/a.js", "package-lock.json", "logo.svg"]:
+        for name in ["sub/gitleaks.toml", "node_modules/a.js", "package-lock.json", "logo.svg",
+                     ".env", "config/secrets.yml"]:
             with self.subTest(name=name), tempfile.TemporaryDirectory() as root:
                 write_token(root, name=name)
                 self.assertEqual(run(root)[0], 1)
 
     # Its regex is edited in gitleaks.toml, so check it still matches.
     def test_bedrock_short_lived_rule_still_fires(self):
-        write(self.root, "a.py", 'K = "' + "bedrock-api-key-" + "YmVkcm9jay5hbWF6b25hd3MuY29t" + '"\n')
+        # Built with join: Python folds "a" + "b" into one string in the .pyc,
+        # and the scan of this repo would then find it.
+        key = "".join(["bedrock-api-key-", "YmVkcm9jay5h", "bWF6b25hd3MuY29t"])
+        write(self.root, "a.py", f'K = "{key}"\n')
         code, out = run(self.root)
         self.assertEqual(code, 1)
         self.assertIn("aws-amazon-bedrock-api-key-short-lived", out)
@@ -169,6 +216,25 @@ class ScanTest(unittest.TestCase):
         code, out = run(self.root)
         self.assertEqual(code, 1)
         self.assertIn("a.zip!config.py", out)
+
+    # Two levels deep, so a max_archive_depth of 1 fails this test.
+    def test_token_in_zip_inside_zip_fails(self):
+        inner = io.BytesIO()
+        with zipfile.ZipFile(inner, "w") as z:
+            z.writestr("config.py", token_file_bytes())
+        with zipfile.ZipFile(os.path.join(self.root, "outer.zip"), "w") as z:
+            z.writestr("inner.zip", inner.getvalue())
+        code, out = run(self.root)
+        self.assertEqual(code, 1)
+        self.assertIn("outer.zip!inner.zip!config.py", out)
+
+    def test_token_inside_tar_gz_fails(self):
+        data = token_file_bytes()
+        with tarfile.open(os.path.join(self.root, "a.tar.gz"), "w:gz") as t:
+            info = tarfile.TarInfo("config.py")
+            info.size = len(data)
+            t.addfile(info, io.BytesIO(data))
+        self.assertEqual(run(self.root)[0], 1)
 
     # Runs the workflow's own scan line in the runner layout: the target
     # repo in "target", this repo in ".org-check". Fails if the step stops

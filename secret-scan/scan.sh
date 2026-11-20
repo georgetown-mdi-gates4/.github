@@ -1,7 +1,9 @@
 #!/bin/sh
 # Scan every file in a folder for secrets with gitleaks (dir mode, so the
-# files on disk, not git history). Reads inside archives up to
-# max_archive_depth levels deep. Binary files are not read. Prints rule
+# files on disk, not git history). Reads inside .zip and .tar.gz files,
+# also nested, up to max_archive_depth levels deep. A .tgz or .docx file
+# is treated as binary and skipped with no message. Binary files are not
+# read. Prints rule
 # id, file and line for each finding. Secret values are redacted. Uses
 # gitleaks.toml beside this script. The scanned repo cannot opt out: its
 # own .gitleaks.toml and gitleaks:allow comments are ignored. gitleaks

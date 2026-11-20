@@ -30,8 +30,9 @@ every pull request when the org ruleset requires it.
 (MIT license) on every text file in a repo folder, with the config in
 `secret-scan/gitleaks.toml` (the gitleaks default rules, with no skipped
 paths except the `.git` folder). It reads the files on disk, not git
-history. It reads inside archives such as `.zip`, up to the depth set in
-`scan.sh`. gitleaks does not read binary files (e.g. `.pdf`, `.exe`), and
+history. It reads inside `.zip` and `.tar.gz` files, also nested, up to
+the depth set in `scan.sh`. It skips `.tgz` and `.docx` files as binary,
+with no message. gitleaks does not read binary files (e.g. `.pdf`, `.exe`), and
 the data check rejects large files. It prints the rule id, file and line
 of each finding, with the secret value redacted. The workflow runs it on
 the target repo after the data check, even when the data check fails.
