@@ -19,28 +19,28 @@ Do each step on your branch. A step is done when its check holds.
 
 1. **One change.** The PR does one thing, and a reader can review it in a few minutes. Split a large change into PRs that each work on their own. Done when every changed file serves the one change that the PR title names.
 2. **Tests.** When you change how code behaves, add or update a test for it in the same PR. Done when the tests near your change pass, run with the test command from the repo's README.
-3. **README.** The repo's README says what the repo does in one or two sentences, how to run it as commands you can paste, how to get the data if it needs any, and who owns it. Done when the README has all four.
-4. **Data check.** Run it from the root of your repo, as shown in "Run the central check locally". Done when it exits 0. If it prints files, move each one as "Data and large files" says.
-5. **Secret scan.** Run it from the root of your repo, as shown in "Run the central check locally". Done when it exits 0. If it finds a secret, follow "Secrets".
+3. **README.** The repo's README says what the repo does in one or two sentences. It gives the commands to run it and to test it, ready to paste. It says how to get the data if the repo needs any, and who owns the repo. Done when the README has all four.
+4. **Data check.** Commit your change, then run the check as shown in "Run the central check locally". Done when it exits 0. If it prints files, move each one as "Data and large files" says.
+5. **Secret scan.** Commit your change, then run the scan as shown in "Run the central check locally". Done when it exits 0. If it finds a secret, follow "Secrets".
 6. **PR template.** Done when "What changed and why" names the change and its reason, and "How I checked it" lists the commands you ran and what they printed.
 
 ## Run the central check locally
 
-Get the check scripts from this repo. When the copy already exists, `git clone` reports that the folder exists, and the command updates the copy instead.
+The central check reads a clean copy of your branch, so the local check does the same. It reads only what you committed. Files in `.gitignore`, e.g. your `.env`, are left out. Commit first, because the check does not see changes you have not committed.
+
+Paste this block into a shell at the root of your repo:
 
 ```sh
 ORG_CHECK="${TMPDIR:-/tmp}/org-check"
 git clone --depth 1 https://github.com/georgetown-mdi-gates4/.github "$ORG_CHECK" || git -C "$ORG_CHECK" pull --ff-only
+CLEAN=$(mktemp -d) && git archive HEAD | tar -x -C "$CLEAN"
+python3 "$ORG_CHECK/data-check/check.py" "$CLEAN"
+sh "$ORG_CHECK/secret-scan/scan.sh" "$CLEAN"
 ```
 
-Then run each check from the root of your repo:
+The first two lines get the check scripts from this repo. When the copy already exists, `git clone` reports that the folder exists, and the command updates the copy instead. The third line copies your last commit to a new temporary folder.
 
-```sh
-python3 "$ORG_CHECK/data-check/check.py" .
-sh "$ORG_CHECK/secret-scan/scan.sh" .
-```
-
-Each names every file it rejects and exits 0 when clean, 1 when it finds a problem, 2 on bad usage. The secret scan needs [gitleaks](https://github.com/gitleaks/gitleaks/releases) on your PATH, at the version set by `GITLEAKS_VERSION` in `$ORG_CHECK/secret-scan/gitleaks-release.env`. `$ORG_CHECK/secret-scan/README.md` says how to get that version. For detail on each check, read `$ORG_CHECK/data-check/README.md` and `$ORG_CHECK/secret-scan/README.md`.
+Each check names every file it rejects and exits 0 when clean, 1 when it finds a problem, 2 on bad usage. Any other exit also means the check did not pass, e.g. 127 when gitleaks is not on your PATH. The secret scan needs [gitleaks](https://github.com/gitleaks/gitleaks/releases) on your PATH, at the version set by `GITLEAKS_VERSION` in `$ORG_CHECK/secret-scan/gitleaks-release.env`. `$ORG_CHECK/secret-scan/README.md` says how to get that version. For detail on each check, read `$ORG_CHECK/data-check/README.md` and `$ORG_CHECK/secret-scan/README.md`.
 
 ## Data and large files
 
@@ -70,11 +70,11 @@ Use your repo's own build output folder in place of `/build/`. The leading `/` k
 
 Keep passwords, API keys and tokens in your local environment, in a `.env` file listed in `.gitignore`, or in the repo's GitHub Actions secrets.
 
-The central check also fails on a secret. It scans the files in the repo with gitleaks and the org config in this repo. It skips git history and binary files, e.g. `.pdf`. The org config is the only config the scan uses. A repo's own `.gitleaks.toml` and its `gitleaks:allow` comments have no effect, and a `.gitleaksignore` file fails the check. For a false positive, ask the org owners to add an allowlist entry to the org config.
+The central check also fails on a secret. It scans the files in the repo with gitleaks and the org config in this repo. It skips git history and binary files, e.g. `.pdf`. The org config is the only config the scan uses. A repo's own `.gitleaks.toml` and its `gitleaks:allow` comments have no effect, and a `.gitleaksignore` file at the repo root fails the check. For a false positive, ask the org owners to add an allowlist entry to the org config.
 
 If the scan finds a secret:
 
 1. Rotate it first. Revoke the key at its provider and make a new one. Done when the old key no longer works.
-2. Then remove it from the files, and put the new key where this section says. Done when the secret scan exits 0.
+2. Then remove it from the files, put the new key where this section says, and commit. Done when the secret scan exits 0.
 
 Rotation comes first because the old key stays in git history and in every clone after you delete it.
