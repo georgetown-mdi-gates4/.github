@@ -23,3 +23,28 @@ Run its tests:
 
 The workflow `.github/workflows/data-check.yml` runs the same check on
 every pull request when the org ruleset requires it.
+
+## Secret scan
+
+`secret-scan/scan.sh` runs [gitleaks](https://github.com/gitleaks/gitleaks)
+(MIT license) with its built-in rules on every file in a repo folder. It
+reads the files on disk, not git history, and skips the `.git` folder. It
+prints the rule id, file and line of each finding, with the secret value
+redacted. The workflow runs it on the target repo after the data check,
+even when the data check fails. The gitleaks version is pinned in the
+workflow, and the download is checked against the release's checksum file.
+
+Run it locally with gitleaks 8.30.1 on your PATH (exit 0 clean, 1 finding,
+2 bad usage):
+
+    sh secret-scan/scan.sh /path/to/your/repo
+
+Run its tests (they skip when gitleaks is not on PATH):
+
+    python3 -m unittest discover -s secret-scan -v
+
+On a finding, rotate the secret first: revoke the key at its provider and
+make a new one. Then remove it from the files and keep the new key out of
+git, e.g. in an environment variable or a `.env` file listed in
+`.gitignore`. Removing the file alone is not enough, because the old key
+stays in git history and in every clone.
