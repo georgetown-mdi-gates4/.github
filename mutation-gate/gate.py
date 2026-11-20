@@ -122,7 +122,8 @@ def _suite(work, suite, name):
         out = p.communicate(timeout=runner.DEMO_TIMEOUT_SECONDS)[0]
     except subprocess.TimeoutExpired:
         os.killpg(p.pid, signal.SIGKILL)
-        p.communicate()
+        p.stdout.close()  # a process outside the group may still hold the pipe
+        p.wait()
         _broken(name, f"TIMED OUT after {runner.DEMO_TIMEOUT_SECONDS} s "
                       f"in {os.path.basename(suite)}")
     counts = [line.split()[1:] for line in out.splitlines() if line.startswith(MARK + " ")]
