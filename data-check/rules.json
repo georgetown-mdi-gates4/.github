@@ -1,0 +1,7 @@
+{
+  "max_bytes": 1048576,
+  "data_extensions": [".npy", ".docx", ".pdf", ".jsonl", ".parquet", ".csv"],
+  "data_folders": ["data", "index"],
+  "allowed_folder": "tests/fixtures",
+  "skip_folders": [".git"]
+}

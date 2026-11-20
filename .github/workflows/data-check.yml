@@ -1,0 +1,29 @@
+# Central check: reject data files and large files.
+# Meant as an org ruleset workflow, so it runs in the TARGET repo.
+# The target repo is checked out into "target" and this org repo into
+# ".org-check", side by side. The script scans only "target", so the
+# check's own files are never scanned and no exclude option is needed.
+name: data-check
+
+on:
+  pull_request:
+  merge_group:
+
+permissions:
+  contents: read
+
+jobs:
+  data-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: target
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: georgetown-mdi-gates4/.github
+          path: .org-check
+          persist-credentials: false
+      - run: python3 .org-check/data-check/check.py target
