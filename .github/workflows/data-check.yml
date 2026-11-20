@@ -1,7 +1,7 @@
-# Central check: reject data files and large files.
+# Central check: reject data files and large files, then scan for secrets.
 # Meant as an org ruleset workflow, so it runs in the TARGET repo.
 # The target repo is checked out into "target" and this org repo into
-# ".org-check", side by side. The script scans only "target", so the
+# ".org-check", side by side. Both checks scan only "target", so the
 # check's own files are never scanned and no exclude option is needed.
 name: data-check
 
@@ -27,3 +27,11 @@ jobs:
           path: .org-check
           persist-credentials: false
       - run: python3 .org-check/data-check/check.py target
+      # The two steps below run even when the data check fails, so both
+      # results show. The job fails if either check fails.
+      - name: Install gitleaks
+        if: ${{ !cancelled() }}
+        run: sh .org-check/secret-scan/install.sh "$RUNNER_TEMP/gitleaks" >> "$GITHUB_PATH"
+      - name: Secret scan
+        if: ${{ !cancelled() }}
+        run: sh .org-check/secret-scan/scan.sh target
