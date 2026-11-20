@@ -5,6 +5,7 @@ The fake token is built at run time from pieces, so this repo never holds
 a string that looks like a real secret (the check scans this repo too).
 
 Run: python3 -m unittest discover -s secret-scan -v
+Set REQUIRE_GITLEAKS=1 to fail, not skip, when gitleaks is not on PATH.
 """
 import os
 import re
@@ -14,6 +15,7 @@ import string
 import subprocess
 import tempfile
 import unittest
+import zipfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCRIPT = os.path.join(HERE, "scan.sh")
@@ -26,10 +28,11 @@ def fake_github_token():
     return "_".join(["ghp", body])
 
 
-def write_token(folder, suffix=""):
+def write_token(folder, suffix="", name="config.py"):
     token = fake_github_token()
-    os.makedirs(folder, exist_ok=True)
-    with open(os.path.join(folder, "config.py"), "w") as f:
+    path = os.path.join(folder, name)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as f:
         f.write(f'TOKEN = "{token}"{suffix}\n')
     return token
 
@@ -39,19 +42,64 @@ def write(folder, name, text):
         f.write(text)
 
 
-def workflow_scan_command():
+def workflow_job():
+    """The data-check job as (header lines, list of steps). Each part is
+    its list of lines, without comment lines and blank lines."""
     with open(WORKFLOW) as f:
-        m = re.search(r"- name: Secret scan\n(?:\s+if: .*\n)?\s+run: (.+)", f.read())
-    assert m, "no 'Secret scan' step with a one-line run in the workflow"
-    return m.group(1)
+        lines = [l for l in f.read().split("\n") if l.strip() and not l.strip().startswith("#")]
+    start = lines.index("  data-check:")
+    at = lines.index("    steps:", start)
+    steps = []
+    for line in lines[at + 1:]:
+        if line.startswith("      - "):
+            steps.append([])
+        steps[-1].append(line)
+    return lines[start:at + 1], steps
 
 
-def run(path):
-    p = subprocess.run(["sh", SCRIPT, path], capture_output=True, text=True)
+def workflow_step(name):
+    found = [s for s in workflow_job()[1] if s[0] == f"      - name: {name}"]
+    assert len(found) == 1, f"want one '{name}' step in the workflow"
+    return found[0]
+
+
+def workflow_run_command(name):
+    return workflow_step(name)[-1].split("run: ", 1)[1]
+
+
+def run(path, cwd=None):
+    p = subprocess.run(["sh", SCRIPT, path], capture_output=True, text=True, cwd=cwd)
     return p.returncode, p.stdout + p.stderr
 
 
-@unittest.skipUnless(shutil.which("gitleaks"), "gitleaks is not on PATH, see README")
+# Pins the whole job header and the two secret-scan steps, every key and
+# value, so no key such as "if: false" or "continue-on-error: true" can
+# switch the scan off.
+class WorkflowPinTest(unittest.TestCase):
+    def test_job_header_is_pinned(self):
+        self.assertEqual(workflow_job()[0], [
+            "  data-check:",
+            "    runs-on: ubuntu-latest",
+            "    steps:",
+        ])
+
+    def test_install_step_is_pinned(self):
+        self.assertEqual(workflow_step("Install gitleaks"), [
+            "      - name: Install gitleaks",
+            "        if: ${{ !cancelled() }}",
+            '        run: sh .org-check/secret-scan/install.sh "$RUNNER_TEMP/gitleaks" >> "$GITHUB_PATH"',
+        ])
+
+    def test_scan_step_is_pinned(self):
+        self.assertEqual(workflow_step("Secret scan"), [
+            "      - name: Secret scan",
+            "        if: ${{ !cancelled() }}",
+            "        run: sh .org-check/secret-scan/scan.sh target",
+        ])
+
+
+@unittest.skipUnless(shutil.which("gitleaks") or os.environ.get("REQUIRE_GITLEAKS") == "1",
+                     "gitleaks is not on PATH, see README")
 class ScanTest(unittest.TestCase):
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
@@ -89,6 +137,39 @@ class ScanTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn(".gitleaksignore: not allowed", out)
 
+    # gitleaks reads a .gitleaksignore in the current folder by default.
+    # The scan must not honor one there either.
+    def test_gitleaksignore_in_current_folder_is_ignored(self):
+        write_token(self.root)
+        code, out = run(self.root)
+        self.assertEqual(code, 1)
+        fingerprint = re.search(r"Fingerprint: *(\S+)", out).group(1)
+        with tempfile.TemporaryDirectory() as cwd:
+            write(cwd, ".gitleaksignore", fingerprint + "\n")
+            self.assertEqual(run(self.root, cwd=cwd)[0], 1)
+
+    # The default gitleaks config skips these paths. The org config does not.
+    def test_no_path_is_skipped(self):
+        for name in ["sub/gitleaks.toml", "node_modules/a.js", "package-lock.json", "logo.svg"]:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as root:
+                write_token(root, name=name)
+                self.assertEqual(run(root)[0], 1)
+
+    # Its regex is edited in gitleaks.toml, so check it still matches.
+    def test_bedrock_short_lived_rule_still_fires(self):
+        write(self.root, "a.py", 'K = "' + "bedrock-api-key-" + "YmVkcm9jay5hbWF6b25hd3MuY29t" + '"\n')
+        code, out = run(self.root)
+        self.assertEqual(code, 1)
+        self.assertIn("aws-amazon-bedrock-api-key-short-lived", out)
+
+    def test_token_inside_zip_fails(self):
+        token = fake_github_token()
+        with zipfile.ZipFile(os.path.join(self.root, "a.zip"), "w") as z:
+            z.writestr("config.py", f'TOKEN = "{token}"\n')
+        code, out = run(self.root)
+        self.assertEqual(code, 1)
+        self.assertIn("a.zip!config.py", out)
+
     # Runs the workflow's own scan line in the runner layout: the target
     # repo in "target", this repo in ".org-check". Fails if the step stops
     # scanning "target" or ignores the scan's exit code.
@@ -96,7 +177,7 @@ class ScanTest(unittest.TestCase):
         write_token(os.path.join(self.root, "target"))
         shutil.copytree(REPO, os.path.join(self.root, ".org-check"),
                         ignore=shutil.ignore_patterns(".git"))
-        p = subprocess.run(["bash", "-eo", "pipefail", "-c", workflow_scan_command()],
+        p = subprocess.run(["bash", "-e", "-c", workflow_run_command("Secret scan")],
                            cwd=self.root, capture_output=True, text=True)
         self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
 

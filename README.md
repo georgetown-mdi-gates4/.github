@@ -27,14 +27,18 @@ every pull request when the org ruleset requires it.
 ## Secret scan
 
 `secret-scan/scan.sh` runs [gitleaks](https://github.com/gitleaks/gitleaks)
-(MIT license) on every file in a repo folder, with the config in
-`secret-scan/gitleaks.toml` (the built-in rules). It
-reads the files on disk, not git history, and skips the `.git` folder. It
-prints the rule id, file and line of each finding, with the secret value
-redacted. The workflow runs it on the target repo after the data check,
-even when the data check fails. The gitleaks version and the sha256 of its
-download are pinned in the workflow, and a download that does not match
-stops the check.
+(MIT license) on every text file in a repo folder, with the config in
+`secret-scan/gitleaks.toml` (the gitleaks default rules, with no skipped
+paths except the `.git` folder). It reads the files on disk, not git
+history. It reads inside archives such as `.zip`, up to the depth set in
+`scan.sh`. gitleaks does not read binary files (e.g. `.pdf`, `.exe`), and
+the data check rejects large files. It prints the rule id, file and line
+of each finding, with the secret value redacted. The workflow runs it on
+the target repo after the data check, even when the data check fails.
+`secret-scan/install.sh` downloads gitleaks for the workflow. The version
+and the sha256 of the download are pinned in
+`secret-scan/gitleaks-release.env`, and a download that does not match
+stops the check before gitleaks is installed.
 
 A repo cannot opt out of the scan. Its own `.gitleaks.toml` and its
 `gitleaks:allow` comments are ignored. A `.gitleaksignore` at the repo root
@@ -47,9 +51,10 @@ Run it locally with gitleaks 8.30.1 on your PATH (exit 0 clean, 1 finding,
 
     sh secret-scan/scan.sh /path/to/your/repo
 
-Run its tests (they skip when gitleaks is not on PATH):
+Run its tests. The scan tests skip when gitleaks is not on PATH. Set
+`REQUIRE_GITLEAKS=1` to make them fail instead:
 
-    python3 -m unittest discover -s secret-scan -v
+    REQUIRE_GITLEAKS=1 python3 -m unittest discover -s secret-scan -v
 
 On a finding, rotate the secret first: revoke the key at its provider and
 make a new one. Then remove it from the files and keep the new key out of
