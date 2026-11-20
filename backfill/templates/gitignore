@@ -1,0 +1,13 @@
+# Secrets
+.env
+
+# Data and built indexes stay out of git
+data/
+index/
+
+# Build output
+build/
+dist/
+__pycache__/
+node_modules/
+.venv/

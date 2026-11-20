@@ -1,0 +1,18 @@
+{
+  "repo_limit": 1000,
+  "branch": "chore/backfill-readme-gitignore",
+  "pr_title": "chore: add missing README and .gitignore",
+  "commit_message": "chore: add missing $path",
+  "readme_stem": "readme",
+  "files": {
+    "README.md": {
+      "template": "templates/README.md",
+      "why": "a README stub. Fill in how to run this repo and who owns it."
+    },
+    ".gitignore": {
+      "template": "templates/gitignore",
+      "why": "keeps `.env`, `data/`, `index/` and build output out of git."
+    }
+  },
+  "pr_body": "templates/pr_body.md"
+}
