@@ -120,6 +120,11 @@ class CheckTest(unittest.TestCase):
             f"tests/fixtures2/data/x.csv: {TYPE_REASON}",
         ], 1)
 
+    def test_limit_is_the_org_standard(self):
+        # The org standard (CONTRIBUTING.md) promises 1 MB = 1,048,576 bytes.
+        # A change to rules.json alone must not quietly change that promise.
+        self.assertEqual(LIMIT, 1048576)
+
     def test_size_boundary(self):
         make(self.root, "at.bin", LIMIT)
         make(self.root, "over.bin", LIMIT + 1)
