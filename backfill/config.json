@@ -11,7 +11,7 @@
     },
     ".gitignore": {
       "template": "templates/gitignore",
-      "why": "keeps `.env`, `data/`, `index/` and build output out of git."
+      "why": "keeps `.env`, the root `data/` and `index/` folders and build output out of git."
     }
   },
   "pr_body": "templates/pr_body.md"

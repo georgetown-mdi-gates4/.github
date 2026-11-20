@@ -1,9 +1,9 @@
 # Secrets
 .env
 
-# Data and built indexes stay out of git
-data/
-index/
+# Data and built indexes at the repo root stay out of git
+/data/
+/index/
 
 # Build output
 build/

@@ -8,6 +8,7 @@ Run: python3 -m unittest discover -s backfill -v
 import base64
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -52,9 +53,9 @@ def fail(stderr):
     return {"code": 1, "stderr": stderr}
 
 
-def repo(name, fork=False, archived=False, empty=False):
+def repo(name, fork=False, archived=False, empty=False, base="main"):
     return {"name": name, "isFork": fork, "isArchived": archived, "isEmpty": empty,
-            "defaultBranchRef": {"name": "main"}}
+            "defaultBranchRef": {"name": base}}
 
 
 def pulls_key(name):
@@ -73,10 +74,10 @@ def readable(name, files, open_prs=()):
     }
 
 
-def writes(name, missing):
+def writes(name, missing, base="main", sha="abc123"):
     """Replies for the write calls --apply makes on one repo."""
     out = {
-        f"api repos/{ORG}/{name}/git/ref/heads/main": ok({"object": {"sha": "abc123"}}),
+        f"api repos/{ORG}/{name}/git/ref/heads/{base}": ok({"object": {"sha": sha}}),
         f"api -X POST repos/{ORG}/{name}/git/refs --input -": ok({}),
         f"api -X POST repos/{ORG}/{name}/pulls --input -":
             ok({"html_url": f"https://github.com/{ORG}/{name}/pull/1"}),
@@ -151,6 +152,10 @@ class BackfillTest(unittest.TestCase):
                                          {"name": ".gitignore", "type": "file"}])
         self.assertEqual(self.run_script([repo("r")], replies), ([f"{ORG}/r: missing README.md"], 0))
 
+    def test_gitignore_name_is_exact_case(self):
+        out = self.run_script([repo("g")], readable("g", ["README.md", ".GitIgnore"]))
+        self.assertEqual(out, ([f"{ORG}/g: missing .gitignore"], 0))
+
     def test_complete_repo(self):
         out = self.run_script([repo("done")], readable("done", ["README.md", ".gitignore"]))
         self.assertEqual(out, ([f"{ORG}/done: ok"], 0))
@@ -207,10 +212,12 @@ class BackfillTest(unittest.TestCase):
         self.assertTrue(all(not c["args"][1].endswith("/git/ref/heads/main") for c in self.calls()))
 
     def test_apply_opens_one_pr_per_repo_with_only_missing_files(self):
-        repos = [repo("both"), repo("noreadme"), repo("done"), repo("forked", fork=True)]
+        repos = [repo("both"), repo("noreadme", base="master"), repo("done"),
+                 repo("forked", fork=True)]
         replies = {**readable("both", ["src"]), **readable("noreadme", [".gitignore"]),
                    **readable("done", ["README.md", ".gitignore"]),
-                   **writes("both", ["README.md", ".gitignore"]), **writes("noreadme", ["README.md"])}
+                   **writes("both", ["README.md", ".gitignore"]),
+                   **writes("noreadme", ["README.md"], base="master", sha="def456")}
         self.assertEqual(self.run_script(repos, replies, "--apply"), ([
             f"{ORG}/both: missing README.md, .gitignore",
             f"{ORG}/both: opened https://github.com/{ORG}/both/pull/1",
@@ -231,12 +238,18 @@ class BackfillTest(unittest.TestCase):
         ])
         bodies = [b for _, _, b in got]
         self.assertEqual(bodies[0], {"ref": f"refs/heads/{BRANCH}", "sha": "abc123"})
+        self.assertEqual(bodies[3]["base"], "main")
+        # noreadme's default branch is master: the ref read, the branch-from
+        # SHA and the PR base must all follow it.
+        self.assertIn(["api", f"repos/{ORG}/noreadme/git/ref/heads/master"],
+                      [c["args"] for c in self.calls()])
+        self.assertEqual(bodies[4], {"ref": f"refs/heads/{BRANCH}", "sha": "def456"})
         self.assertEqual(bodies[1]["branch"], BRANCH)
         self.assertEqual(base64.b64decode(bodies[1]["content"]).decode(),
                          template("README.md", repo="both"))
         self.assertEqual(base64.b64decode(bodies[2]["content"]).decode(), template(".gitignore"))
         pr = bodies[6]
-        self.assertEqual((pr["head"], pr["base"], pr["title"]), (BRANCH, "main", CONFIG["pr_title"]))
+        self.assertEqual((pr["head"], pr["base"], pr["title"]), (BRANCH, "master", CONFIG["pr_title"]))
         self.assertIn("`README.md`", pr["body"])
         self.assertNotIn("`.gitignore`", pr["body"])
         self.assertIn(f"https://github.com/{ORG}/.github/blob/main/CONTRIBUTING.md", pr["body"])
@@ -256,12 +269,23 @@ class BackfillTest(unittest.TestCase):
 
     def test_templates_hold_the_standard(self):
         ignore = template(".gitignore").splitlines()
-        for line in [".env", "data/", "index/", "build/", "dist/", "__pycache__/",
+        for line in [".env", "/data/", "/index/", "build/", "dist/", "__pycache__/",
                      "node_modules/", ".venv/"]:
             self.assertIn(line, ignore)
         readme = template("README.md").splitlines()
         self.assertIn("## How to run", readme)
         self.assertIn("## Who owns this", readme)
+
+    @unittest.skipIf(shutil.which("git") is None, "git is not on PATH")
+    def test_gitignore_template_ignores_only_root_data_and_index(self):
+        subprocess.run(["git", "init", "-q", self.dir], check=True)
+        with open(os.path.join(self.dir, ".gitignore"), "w") as f:
+            f.write(template(".gitignore"))
+        cases = {"data/x.csv": True, "index/v.npy": True, ".env": True,
+                 "tests/fixtures/data/small.csv": False, "src/pkg/data/loader.py": False}
+        for path, ignored in cases.items():
+            p = subprocess.run(["git", "-C", self.dir, "check-ignore", "-q", "--no-index", path])
+            self.assertEqual(p.returncode == 0, ignored, path)
 
 
 if __name__ == "__main__":

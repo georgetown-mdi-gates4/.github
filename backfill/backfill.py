@@ -12,7 +12,9 @@ A file is missing only when it is absent from a root listing that
 succeeded. Any failed `gh` call prints an error line for that repo and
 makes the exit code 1. Exit 2 is bad usage.
 
-Branch name, PR title, file names and templates live in config.json.
+config.json holds the branch name, the PR title, the commit message, the file
+names and the path to each template. templates/ holds the text of each file
+and of the PR body.
 
 Run: python3 backfill/backfill.py <org> [--apply]
 """

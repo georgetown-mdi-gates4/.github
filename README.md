@@ -44,6 +44,9 @@ PR per repo with gaps. The PR adds only the missing files:
 
 A failed `gh` call prints an `error` line for that repo, and the script
 exits 1 at the end. It never counts a failed call as "file present".
+If an earlier `--apply` run stopped after it made the branch, later runs
+print "Reference already exists" for that repo. Delete that branch in the
+target repo, then run again.
 The branch name, PR title and file list live in `backfill/config.json`.
 The file contents and the PR body live in `backfill/templates/`.
 
