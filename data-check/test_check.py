@@ -125,7 +125,7 @@ class CheckTest(unittest.TestCase):
         self.assertRun([f"Tests/Fixtures/data/x.csv: {TYPE_REASON}"], 1)
 
     def test_limit_is_the_org_standard(self):
-        # The org standard (ticket #7) promises 1 MB = 1,048,576 bytes.
+        # The org standard (ticket #7) says 1 MB. This check counts 1 MB as 1,048,576 bytes.
         # A change to rules.json alone must not quietly change that promise.
         self.assertEqual(LIMIT, 1048576)
 
@@ -182,21 +182,27 @@ class CheckTest(unittest.TestCase):
         if text is not None:
             with open(os.path.join(bin_dir, "rules.json"), "w") as f:
                 f.write(text)
-        make(self.root, "data/x.csv")
-        return run(self.root, script)[:2]
+        return run(self.root, script)
 
+    # The tree holds no rejected file, so exit 1 here can only come from
+    # the bad rules file, never from a reject under fallback rules.
     def test_missing_rules_fails(self):
-        self.assertEqual(self.with_rules(None)[1], 1)
+        out, code, err = self.with_rules(None)
+        self.assertEqual((out, code), ([], 1))
+        self.assertIn("FileNotFoundError", err)
 
     def test_invalid_rules_fails(self):
-        self.assertEqual(self.with_rules("{not json")[1], 1)
+        out, code, err = self.with_rules("{not json")
+        self.assertEqual((out, code), ([], 1))
+        self.assertIn("JSONDecodeError", err)
 
     def test_rules_lists_case_does_not_matter(self):
         with open(os.path.join(HERE, "rules.json")) as f:
             rules = json.load(f)
         rules["data_folders"] = [d.title() for d in rules["data_folders"]]
         rules["data_extensions"] = [e.upper() for e in rules["data_extensions"]]
-        self.assertEqual(self.with_rules(json.dumps(rules)), ([f"data/x.csv: {TYPE_REASON}"], 1))
+        make(self.root, "data/x.csv")
+        self.assertEqual(self.with_rules(json.dumps(rules))[:2], ([f"data/x.csv: {TYPE_REASON}"], 1))
 
 
 if __name__ == "__main__":
