@@ -64,7 +64,8 @@ e.g. `<os>_<arch>` = `darwin_arm64`.
 A false positive is fixed in this repo, by the org owners only: add an
 allowlist to `secret-scan/gitleaks.toml`. Then set
 `GITLEAKS_CONFIG_SHA256` in `secret-scan/gitleaks-release.env` to the
-output of `sha256sum secret-scan/gitleaks.toml`, or the tests fail.
+first field of the output of
+`sha256sum secret-scan/gitleaks.toml`, or the tests fail.
 
 ## Upgrade gitleaks
 

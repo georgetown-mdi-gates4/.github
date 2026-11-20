@@ -135,7 +135,7 @@ class PinTest(unittest.TestCase):
         with open(CONFIG) as f:
             self.assertEqual(re.findall(r"/blob/v([0-9.]+)/config/", f.read()), [version])
         with open(DOCS) as f:
-            named = re.findall(r"\b\d+\.\d+\.\d+\b", f.read())
+            named = re.findall(r"(?<![\d.])\d+\.\d+\.\d+(?!\.?\d)", f.read())
         self.assertTrue(named, "the docs name no gitleaks version")
         self.assertEqual(set(named), {version})
 
