@@ -40,7 +40,7 @@ python3 "$ORG_CHECK/data-check/check.py" .
 sh "$ORG_CHECK/secret-scan/scan.sh" .
 ```
 
-Each names every file it rejects and exits 0 when clean, 1 when it finds a problem, 2 on bad usage. The secret scan needs [gitleaks](https://github.com/gitleaks/gitleaks/releases) on your PATH, at the version set by `GITLEAKS_VERSION` in `$ORG_CHECK/.github/workflows/data-check.yml`.
+Each names every file it rejects and exits 0 when clean, 1 when it finds a problem, 2 on bad usage. The secret scan needs [gitleaks](https://github.com/gitleaks/gitleaks/releases) on your PATH, at the version set by `GITLEAKS_VERSION` in `$ORG_CHECK/secret-scan/gitleaks-release.env`. `$ORG_CHECK/secret-scan/README.md` says how to get that version. For detail on each check, read `$ORG_CHECK/data-check/README.md` and `$ORG_CHECK/secret-scan/README.md`.
 
 ## Data and large files
 
@@ -70,7 +70,7 @@ Use your repo's own build output folder in place of `/build/`. The leading `/` k
 
 Keep passwords, API keys and tokens in your local environment, in a `.env` file listed in `.gitignore`, or in the repo's GitHub Actions secrets.
 
-The central check scans every file in the repo with gitleaks and the org config in this repo. The org config is the only config the scan uses. A repo's own `.gitleaks.toml` and its `gitleaks:allow` comments have no effect, and a `.gitleaksignore` file fails the check. For a false positive, ask the org owners to add an allowlist entry to the org config.
+The central check also fails on a secret. It scans the files in the repo with gitleaks and the org config in this repo. It skips git history and binary files, e.g. `.pdf`. The org config is the only config the scan uses. A repo's own `.gitleaks.toml` and its `gitleaks:allow` comments have no effect, and a `.gitleaksignore` file fails the check. For a false positive, ask the org owners to add an allowlist entry to the org config.
 
 If the scan finds a secret:
 

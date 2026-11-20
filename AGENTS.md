@@ -18,7 +18,13 @@ Run from the repo root:
 
 ```sh
 python3 -m unittest discover -s data-check -v
+REQUIRE_GITLEAKS=1 python3 -m unittest discover -s secret-scan -v
+python3 -m unittest discover -s backfill -v
 ```
+
+The secret-scan tests need gitleaks on PATH, at the version in `secret-scan/gitleaks-release.env`. `secret-scan/README.md` says how to get it. Without `REQUIRE_GITLEAKS=1`, the scan tests skip when gitleaks is missing.
+
+When you edit `secret-scan/gitleaks.toml`, set `GITLEAKS_CONFIG_SHA256` in `secret-scan/gitleaks-release.env` to the first field of `sha256sum secret-scan/gitleaks.toml` in the same PR, or the tests fail. Each folder's README has the detail: `data-check/README.md`, `secret-scan/README.md`, `backfill/README.md`.
 
 ## Guardrails
 
