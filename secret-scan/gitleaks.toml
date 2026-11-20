@@ -1,0 +1,5 @@
+# gitleaks config for the central check. It uses the built-in rules only.
+# Passed with --config, so a .gitleaks.toml in the target repo is ignored.
+# To fix a false positive, add an allowlist here (org owners only).
+[extend]
+useDefault = true

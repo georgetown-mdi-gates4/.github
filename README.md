@@ -27,12 +27,20 @@ every pull request when the org ruleset requires it.
 ## Secret scan
 
 `secret-scan/scan.sh` runs [gitleaks](https://github.com/gitleaks/gitleaks)
-(MIT license) with its built-in rules on every file in a repo folder. It
+(MIT license) on every file in a repo folder, with the config in
+`secret-scan/gitleaks.toml` (the built-in rules). It
 reads the files on disk, not git history, and skips the `.git` folder. It
 prints the rule id, file and line of each finding, with the secret value
 redacted. The workflow runs it on the target repo after the data check,
-even when the data check fails. The gitleaks version is pinned in the
-workflow, and the download is checked against the release's checksum file.
+even when the data check fails. The gitleaks version and the sha256 of its
+download are pinned in the workflow, and a download that does not match
+stops the check.
+
+A repo cannot opt out of the scan. Its own `.gitleaks.toml` and its
+`gitleaks:allow` comments are ignored. A `.gitleaksignore` at the repo root
+fails the scan, because gitleaks always reads that file. To fix a false
+positive, change `secret-scan/gitleaks.toml` in this repo. Only the org
+owners can make that change.
 
 Run it locally with gitleaks 8.30.1 on your PATH (exit 0 clean, 1 finding,
 2 bad usage):

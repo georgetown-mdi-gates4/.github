@@ -26,12 +26,17 @@ def fake_github_token():
     return "_".join(["ghp", body])
 
 
-def write_token(folder):
+def write_token(folder, suffix=""):
     token = fake_github_token()
     os.makedirs(folder, exist_ok=True)
     with open(os.path.join(folder, "config.py"), "w") as f:
-        f.write(f'TOKEN = "{token}"\n')
+        f.write(f'TOKEN = "{token}"{suffix}\n')
     return token
+
+
+def write(folder, name, text):
+    with open(os.path.join(folder, name), "w") as f:
+        f.write(text)
 
 
 def workflow_scan_command():
@@ -65,6 +70,24 @@ class ScanTest(unittest.TestCase):
         self.assertIn("github-pat", out)
         self.assertIn("config.py", out)
         self.assertNotIn(token, out)
+
+    # The target repo must not be able to switch the check off.
+    def test_repo_config_allowlisting_everything_is_ignored(self):
+        write(self.root, ".gitleaks.toml", '[allowlist]\npaths = [".*"]\n')
+        write_token(self.root)
+        self.assertEqual(run(self.root)[0], 1)
+
+    def test_gitleaks_allow_comment_is_ignored(self):
+        write_token(self.root, "  # gitleaks:allow")
+        self.assertEqual(run(self.root)[0], 1)
+
+    # gitleaks always reads a .gitleaksignore at the scanned root, and no
+    # flag turns that off, so the check fails on the file itself.
+    def test_repo_gitleaksignore_fails(self):
+        write(self.root, ".gitleaksignore", "\n")
+        code, out = run(self.root)
+        self.assertEqual(code, 1)
+        self.assertIn(".gitleaksignore: not allowed", out)
 
     # Runs the workflow's own scan line in the runner layout: the target
     # repo in "target", this repo in ".org-check". Fails if the step stops
