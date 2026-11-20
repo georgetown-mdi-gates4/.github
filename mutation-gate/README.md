@@ -23,8 +23,9 @@ From the root of this repo, with gitleaks on PATH at the version that
   not on PATH. The scan tests always run with `REQUIRE_GITLEAKS=1`.
 - Exit 1 also when a mutation run proves nothing (`BROKEN <file>:
   <label>: <cause>`). A mutation counts as caught only when a test fails.
-  A run that times out, a mutated `.py` file that does not compile, and a
-  test that errors are each reported this way.
+  A run that times out, a mutated `.py` file that does not compile, a
+  test that errors, and a suite that ends without a test result are each
+  reported this way.
 
 Half the cores run mutations at once, so each test run stays well inside
 the runner's time limit (`DEMO_TIMEOUT_SECONDS` in `mutation_gate.py`). A
@@ -32,11 +33,9 @@ full run takes a few minutes.
 
 ## Add a mutation
 
-An entry in `mutation-gate/mutations.json` needs one of two things: a
-ticket that names the rule as one that must be provable by mutation, or
-a review that found a breakage every test let through. `source` cites
-that ticket or review. It can also name the PR that built the rule and
-the test that covers it.
+An entry in `mutation-gate/mutations.json` needs a ticket that names the
+rule or a review that found the breakage. `source` cites that ticket or
+review.
 
     {"script": "../data-check/check.py",
      "label": "a file exactly at the size limit is rejected",

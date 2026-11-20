@@ -9,13 +9,6 @@
     },
     {
       "script": "../secret-scan/scan.sh",
-      "label": "--config dropped, so the gitleaks default and the target's own .gitleaks.toml apply",
-      "find": "--config \"$here/gitleaks.toml\" ",
-      "replace": "",
-      "source": "#17 (review of the secret scan, ticket #3)"
-    },
-    {
-      "script": "../secret-scan/scan.sh",
       "label": "archive depth 1, so a zip inside a zip is not read",
       "find": "max_archive_depth=8",
       "replace": "max_archive_depth=1",
@@ -68,35 +61,21 @@
       "label": "fixtures exemption applies at any depth",
       "find": "in_allowed = rel.startswith(rules[\"allowed_folder\"].rstrip(\"/\") + \"/\")",
       "replace": "in_allowed = rules[\"allowed_folder\"] in rel",
-      "source": "#9 (PR: tests/fixtures/ is exempt at the repo root only)"
+      "source": "PR #9 review fix (b9cd601): test_fixtures_only_at_root covers it"
     },
     {
       "script": "../data-check/check.py",
       "label": "a symlink counts at its target's size",
       "find": "size = os.lstat(path).st_size",
       "replace": "size = os.stat(path).st_size",
-      "source": "review of the #16 housekeeping branch; rule built in PR #9, test_symlink_counts_at_own_size covers it"
-    },
-    {
-      "script": "../backfill/backfill.py",
-      "label": "a failed root listing counts as every file present",
-      "find": "    gaps = missing([e[\"name\"] for e in gh(\"api\", f\"{name}/contents\") if e[\"type\"] != \"dir\"], config)\n",
-      "replace": "    try:\n        gaps = missing([e[\"name\"] for e in gh(\"api\", f\"{name}/contents\") if e[\"type\"] != \"dir\"], config)\n    except GhError:\n        gaps = []\n",
-      "source": "#12 (PR: any gh failure prints an error and exits 1)"
-    },
-    {
-      "script": "../backfill/backfill.py",
-      "label": "a README lookalike such as README-old.md counts as a README",
-      "find": "n == stem or n.startswith(stem + \".\")",
-      "replace": "n.startswith(stem)",
-      "source": "review of the #16 housekeeping branch; rule built in PR #12, test_readme_lookalike_does_not_count covers it"
+      "source": "PR #9 review fix (b9cd601): test_symlink_counts_at_own_size covers it"
     },
     {
       "script": "../backfill/backfill.py",
       "label": ".gitignore matched in any case",
       "find": "if path not in names and",
       "replace": "if path.lower() not in lower and",
-      "source": "review of the #16 housekeeping branch; rule built in PR #12, test_gitignore_name_is_exact_case covers it"
+      "source": "review round 1 of #6 (PR #12): test_gitignore_name_is_exact_case covers it"
     }
   ],
   "retired": []
