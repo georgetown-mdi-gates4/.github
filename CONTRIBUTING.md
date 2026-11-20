@@ -1,6 +1,6 @@
 # How we work
 
-These rules apply to every repo in this organization. A repo can add its own `CONTRIBUTING.md` to replace this page.
+These rules apply to every repo in this organization except forks. A repo can add its own `CONTRIBUTING.md` to replace this page. The organization rule and the central check still apply to that repo.
 
 ## Every change goes through a branch and a PR
 
@@ -18,12 +18,12 @@ These rules apply to every repo in this organization. A repo can add its own `CO
 
 The central check reads the whole repo on every PR. It fails when it finds:
 
-- any file over 1 MB, e.g. a 40 MB model file;
-- a `.npy`, `.docx`, `.pdf`, `.jsonl`, `.parquet` or `.csv` file under any `data/` or `index/` folder, e.g. `data/raw/survey.csv` or `index/vectors.npy`.
+- any file over 1 MB (1,048,576 bytes), e.g. a 40 MB model file;
+- a `.npy`, `.docx`, `.pdf`, `.jsonl`, `.parquet` or `.csv` file under any `data/` or `index/` folder, e.g. `data/raw/survey.csv` or `index/vectors.npy`. The case of the extension does not matter, so `.CSV` also fails.
 
-Small test data is allowed under `tests/fixtures/`, if each file is under 1 MB.
+Small test data is allowed under `tests/fixtures/` at the root of the repo, if each file is under 1 MB. A `tests/fixtures/` folder at a lower level, e.g. `src/tests/fixtures/`, gets no exception.
 
-Keep real data in cloud storage. Say in the README where it is and how to get it, e.g. the command that copies it to your machine. Build output (indexes, PDFs, compiled files) is made again from the code, so leave it out too. Add these folders to `.gitignore`.
+Keep real data in cloud storage. Say in the README where it is and how to get it, e.g. the command that copies it to your machine. Build output (indexes, PDFs, compiled files) is made again from the code, so leave it out too. Add `data/`, `index/`, `.env` and your build output folder, e.g. `build/`, to `.gitignore`.
 
 ## Every repo has a README
 
